@@ -3,20 +3,66 @@ use web3::types::Address;
 use std::env;
 use web3::api::Txpool;
 
+
+use clap::{arg, command, value_parser, ArgAction, Command, Arg};
+
 #[tokio::main]
 async fn main() -> web3::Result<()> {
+    let matches = Command::new("Snipe this mint!")
+        .about("A simple CLI tool to mint NFTs on Ethereum")
+        .version("0.1.0")
+        .author("Querty for The Diggers DAO")
+        .arg(
+            Arg::new("Mint contract address")
+                .short('c')
+                .long("contract_address")
+                .required(true),
+        )
+        .arg(
+            Arg::new("Contract ABI")
+                .short('a')
+                .long("abi")
+                .required(true),
+        )
+        .arg(
+            Arg::new("Price in WEI")
+                .short('p')
+                .long("price")
+                .required(true),
+        )
+        .arg(
+            Arg::new("Amount of NFTs to mint")
+                .short('n')
+                .long("amount")
+                .required(true),
+        )
+        .arg(
+            Arg::new("Private key of the account")
+                .short('k')
+                .long("private-key")
+                .required(true),
+        )
+        .arg(
+            Arg::new("Timestamp of the mint in seconds")
+                .short('t')
+                .long("timestamp")
+                .required(true),
+        )
+        .get_matches();
+    
+    let args: Vec<String> = env::args().collect();
     dotenv::dotenv().ok();
 
     let url = &env::var("ALCHEMY_URL").unwrap();
     let address = &env::var("ADDRESS").unwrap();
 
-    get_user_balance("0x58F51aD645AAB9cEFc282F9630E2Ca0F15B3aF62").await?;
+    get_user_balance(address, url).await?;
     Ok(())
 }
 
 
 // récupérer la balance d'un utilisateur
-async fn get_user_balance(user: &str) -> web3::Result<()> {
+async fn get_user_balance(user: &str, url: &str) -> web3::Result<()> {
     let account: Address = user.parse().unwrap();
     
 
