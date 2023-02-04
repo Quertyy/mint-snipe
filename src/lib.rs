@@ -3,7 +3,6 @@ pub struct Config {
     pub contract_abi: String,
     pub price: u128,
     pub amount: u128,
-    pub private_key: String,
     pub timestamp: u128,
 }
 
@@ -17,15 +16,13 @@ impl Config {
         let contract_abi = args[2].clone();
         let price = args[3].parse().unwrap();
         let amount = args[4].parse().unwrap();
-        let private_key = args[5].clone();
-        let timestamp = args[6].parse().unwrap();
+        let timestamp = args[5].parse().unwrap();
 
         Ok(Config {
             contract_address,
             contract_abi,
             price,
             amount,
-            private_key,
             timestamp,
         })
     }
