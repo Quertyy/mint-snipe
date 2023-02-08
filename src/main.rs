@@ -1,16 +1,15 @@
+use std::error::Error;
 use clap::Parser;
-
 use mint_sniper::*;
 
 #[tokio::main]
-async fn main() -> web3::Result<()> {
+async fn main() -> Result<(), Box<dyn Error>> {
     let config = Config::parse();
     let user = User::parse();
 
     let web3 = init_connection().unwrap();
-    check_on_config(&config, &user.address, &web3).await.unwrap();
+    check_on_config(&config, &user.address, &web3).await?;
 
-    let abi = read_abi().unwrap();
     Ok(())
 }
 

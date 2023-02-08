@@ -5,6 +5,9 @@ use std::fs::File;
 use std::io::Read;
 use std::env;
 use std::error::Error;
+use std::result::Result;
+
+use hex::encode;
 
 use web3::{Web3, contract};
 use web3::futures::Future;
@@ -12,7 +15,7 @@ use web3::contract::{Contract, Options};
 use web3::transports::Http;
 use web3::types::{Address, U256, H160};
 use web3_unit_converter::Unit;
-use serde_json::{Result, Value};
+use serde_json::{Result as JsonResult, Value};
 
 #[derive(Parser)]
 #[command(name = "Snipe this Mint!")]
@@ -67,14 +70,14 @@ pub fn init_connection() -> web3::Result<Web3<Http>> {
     Ok(web3)
 }
 
-pub async fn check_on_config(config: &Config, user: &str, web3: &web3::Web3<Http>) -> web3::Result<()> {
+pub async fn check_on_config(config: &Config, user: &str, web3: &web3::Web3<Http>) -> Result<(), Box<dyn Error>> {
     check_timestamp_requirement(config).unwrap();
-    check_balance_requirement(config, web3, user).await.unwrap();
-
+    check_balance_requirement(config, web3, user).await?;
+    check_if_contract(config.contract_address.parse().unwrap(), web3).await?;
     Ok(())
 }
 
-fn check_timestamp_requirement(config: &Config) -> Result<()> {
+fn check_timestamp_requirement(config: &Config) -> Result<(), Box<dyn Error>> {
     let timestamp = get_unix_time();
     if timestamp > config.timestamp {
         panic!("The mint has already started!");
@@ -82,6 +85,15 @@ fn check_timestamp_requirement(config: &Config) -> Result<()> {
         panic!("The mint is too far in the future!");
     }
 
+    Ok(())
+}
+
+async fn check_if_contract(contract: Address, web3: &web3::Web3<Http>) -> Result<(), Box<dyn Error>>{
+    let code = web3.eth().code(contract, None).await?;
+    let serialized = format!("{}", serde_json::to_string(&code).unwrap());
+    if serialized == String::from("\"0x\"") {
+        panic!("The address is not a contract!");
+    }
     Ok(())
 }
 
@@ -112,7 +124,7 @@ pub async fn get_user_balance(web3: &web3::Web3<Http>, user: &str) -> web3::Resu
     Ok(wei_balance.as_u64())
 }
 
-pub fn read_abi() -> Result<Value>{
+pub fn read_abi() -> JsonResult<Value>{
     let mut file = File::open("abi/test.json").unwrap();
 
     let mut contents = String::new();
