@@ -7,6 +7,7 @@ use std::env;
 use std::error::Error;
 use std::result::Result;
 
+use ethabi::Contract;
 use ethers::prelude::*;
 use reqwest::header::{HeaderMap, HeaderValue};
 
@@ -72,7 +73,8 @@ pub async fn check_on_config(
 ) -> Result<(), Box<dyn Error>> {
     check_timestamp_requirement(config).unwrap();
     check_balance_requirement(config, provider, user).await?;
-    //check_if_contract(config.contract_address.parse().unwrap(), provider).await?;
+    check_if_contract(config.contract_address.parse().unwrap(), provider).await?;
+    check_abi_method(&config.mint_method)?;
     Ok(())
 }
 
@@ -87,14 +89,29 @@ fn check_timestamp_requirement(config: &Config) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-//async fn check_if_contract(contract: Address, provider: &Provider<Http>) -> Result<(), Box<dyn Error>>{
-//    let code = web3.eth().code(contract, None).await?;
-//    let serialized = format!("{}", serde_json::to_string(&code).unwrap());
-//    if serialized == String::from("\"0x\"") {
-//        panic!("The address is not a contract!");
-//    }
-//    Ok(())
-//}
+abigen!(Test, "src/abi/test.json", event_derives(serde::Deserialize, serde::Serialize));
+
+async fn check_if_contract(contract: Address, provider: &Provider<Http>) -> Result<(), Box<dyn Error>>{
+    let code = provider.get_code(contract, None).await?;
+    if code.is_empty() {
+        panic!("The contract address is not a contract!");
+    }
+    Ok(())
+}
+
+fn check_abi_method(method_name: &str) -> Result<(), Box<dyn Error>> {
+    let mut file = File::open("src/abi/test.json")?;
+    let mut abi = String::new();
+    file.read_to_string(&mut abi)?;
+
+    let contract = Contract::load(abi.as_bytes())?;
+
+    if !contract.function(method_name).is_ok() {
+        panic!("The mint method does not exist!");
+    }
+
+    Ok(())
+}
 
 async fn check_balance_requirement(
     config: &Config, 
@@ -117,34 +134,3 @@ pub fn get_unix_time() -> u64 {
     SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs()
 }
 
-pub fn read_abi() -> JsonResult<Value>{
-    let mut file = File::open("abi/test.json").unwrap();
-
-    let mut contents = String::new();
-    file.read_to_string(&mut contents).unwrap();
-    
-
-    let abi_json: Value = serde_json::from_str(&contents).unwrap();
-    let abi_string = abi_json["result"].as_str().unwrap();
-    let abi: Value = serde_json::from_str(abi_string).unwrap();
-    Ok(abi)
-}
-
-/*
-async fn get_contract_abi(web3: &web3::Web3<Http>, contract_address: H160) -> bool {
-    let code = web3.eth().code(contract_address, None).await.unwrap();
-    if code.is_empty() {
-        return false;
-    }
-    let abi = web3.eth().get_abi(contract_address, None).await.unwrap();
-    if abi.is_none() {
-        return false;
-    }
-    let contract = Contract::from_abi(web3.eth(), contract_address, abi.unwrap(), Options::default()).unwrap();
-    let symbol: H256 = contract.function("symbol").call().await.unwrap();
-    if symbol.is_zero() {
-        return false;
-    }
-    true
-}
-*/
