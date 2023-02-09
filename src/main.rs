@@ -7,8 +7,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let config = Config::parse();
     let user = User::parse();
 
-    let web3 = init_connection().unwrap();
-    check_on_config(&config, &user.address, &web3).await?;
+    let provider = init_connection()?;
+    check_on_config(&config, &user.address, &provider).await?;
 
     Ok(())
 }

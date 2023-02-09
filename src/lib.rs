@@ -7,15 +7,14 @@ use std::env;
 use std::error::Error;
 use std::result::Result;
 
-use hex::encode;
+use ethers::prelude::*;
+use reqwest::header::{HeaderMap, HeaderValue};
 
-use web3::{Web3, contract};
-use web3::futures::Future;
-use web3::contract::{Contract, Options};
-use web3::transports::Http;
-use web3::types::{Address, U256, H160};
-use web3_unit_converter::Unit;
 use serde_json::{Result as JsonResult, Value};
+
+
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 #[derive(Parser)]
 #[command(name = "Snipe this Mint!")]
@@ -59,21 +58,21 @@ impl User {
     }
 }
 
-pub fn init_connection() -> web3::Result<Web3<Http>> {
+pub fn init_connection() ->  eyre::Result<Provider<Http>> {
     let user = User::parse();
-    let url = &user.url;
-    let _ = env_logger::try_init();
+    let _provider = Provider::<Http>::try_from(&user.url)?;
 
-    let transport = Http::new(url)?;
-    let web3 = Web3::new(transport);
-
-    Ok(web3)
+    Ok(_provider)
 }
 
-pub async fn check_on_config(config: &Config, user: &str, web3: &web3::Web3<Http>) -> Result<(), Box<dyn Error>> {
+pub async fn check_on_config(
+    config: &Config, 
+    user: &str, 
+    provider: &Provider<Http>
+) -> Result<(), Box<dyn Error>> {
     check_timestamp_requirement(config).unwrap();
-    check_balance_requirement(config, web3, user).await?;
-    check_if_contract(config.contract_address.parse().unwrap(), web3).await?;
+    check_balance_requirement(config, provider, user).await?;
+    //check_if_contract(config.contract_address.parse().unwrap(), provider).await?;
     Ok(())
 }
 
@@ -88,40 +87,34 @@ fn check_timestamp_requirement(config: &Config) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-async fn check_if_contract(contract: Address, web3: &web3::Web3<Http>) -> Result<(), Box<dyn Error>>{
-    let code = web3.eth().code(contract, None).await?;
-    let serialized = format!("{}", serde_json::to_string(&code).unwrap());
-    if serialized == String::from("\"0x\"") {
-        panic!("The address is not a contract!");
-    }
-    Ok(())
-}
+//async fn check_if_contract(contract: Address, provider: &Provider<Http>) -> Result<(), Box<dyn Error>>{
+//    let code = web3.eth().code(contract, None).await?;
+//    let serialized = format!("{}", serde_json::to_string(&code).unwrap());
+//    if serialized == String::from("\"0x\"") {
+//        panic!("The address is not a contract!");
+//    }
+//    Ok(())
+//}
 
-async fn check_balance_requirement(config: &Config, web3: &web3::Web3<Http>, user: &str) -> web3::Result<()> {
+async fn check_balance_requirement(
+    config: &Config, 
+    provider: &Provider<Http>, 
+    user: &str
+) -> Result<(), Box<dyn std::error::Error>> {
     let account: Address = user.parse().unwrap();
 
-    let wei_balance = web3.eth().balance(account, None).await?;
-    let eth_balance = Unit::Wei(&wei_balance.to_string()).to_eth_str().unwrap();
-    println!("Balance of {:?}: {} ETH", account, eth_balance);
-
-    if wei_balance.as_u64() < config.price * config.amount {
-        panic!("You don't have enough ETH to mint!");
+    let balance = provider.get_balance(account, None).await?;
+    let balance = balance.as_u64();
+    if balance < config.price * config.amount {
+        panic!("Not enough balance!");
     }
 
+    println!("Balance: {}", balance);
     Ok(())
 }
 
 pub fn get_unix_time() -> u64 {
     SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs()
-}
-
-pub async fn get_user_balance(web3: &web3::Web3<Http>, user: &str) -> web3::Result<u64> {
-    let account: Address = user.parse().unwrap();
-
-    let wei_balance = web3.eth().balance(account, None).await?;
-    let eth_balance = Unit::Wei(&wei_balance.to_string()).to_eth_str().unwrap();
-    println!("Balance of {:?}: {} ETH", account, eth_balance);
-    Ok(wei_balance.as_u64())
 }
 
 pub fn read_abi() -> JsonResult<Value>{
