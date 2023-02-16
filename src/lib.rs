@@ -1,4 +1,5 @@
 use clap::Parser;
+use ethers_core::k256::ecdsa::SigningKey;
 
 use std::time::SystemTime;
 use std::fs::File;
@@ -7,25 +8,25 @@ use std::env;
 use std::error::Error;
 use std::result::Result;
 
-use chrono::Local;
+use chrono::{Local, format};
 use colored::*;
 use colored::Colorize;
-use std::fmt::Display;
+use std::fmt::{Display, format};
 
 
 use ethabi::Contract;
 use ethers::prelude::*;
+use ethers_signers::{LocalWallet};
 
 use std::sync::Arc;
-use tokio::sync::Mutex;
 
 #[macro_export]
 macro_rules! timestamp_print {
     ($color: expr, $message: expr) => {
         println!(
             "{} {} {}",
-            chrono::Local::now().format("[%Y-%m-%d]"),
-            chrono::Local::now().format("[%H:%M:%S]"),
+            chrono::Local::now().format("[%Y-%m-%d]").to_string().color($color),
+            chrono::Local::now().format("[%H:%M:%S]").to_string().color($color),
             $message.color($color)
         );
     };
@@ -55,43 +56,53 @@ pub struct Config {
 }
 
 pub struct User {
-    pub url: String,
+    pub skey: Wallet<SigningKey>,
     pub address: String,
+    pub endpoint: String,
 }
 
+
 impl User {
-    pub fn parse() -> User {
+    pub fn parse() -> Result<User, Box<dyn Error>> {
         dotenv::dotenv().ok();
+        let pkey = env::var("PRIVATE_KEY").unwrap();
+        let alchemy_endpoint: &str = &env::var("ALCHEMY_URL").unwrap().to_string();
 
-        let url = &env::var("ALCHEMY_URL").unwrap();
-        let address = &env::var("ADDRESS").unwrap();
+        let skey = pkey.parse::<LocalWallet>()?;
+        //let address = secret_key_to_address(&skey).to_string();
+        //let signer = SignerMiddleware::new(provider, skey);
+        let address = env::var("ADDRESS").unwrap();
 
-        User {
-            url: url.to_string(),
-            address: address.to_string(),
-        }
+        Ok(
+            User {
+                skey,
+                address: address.to_string(),
+                endpoint: alchemy_endpoint.to_string(),
+            }
+        )
     }
 }
 
-pub fn init_connection() ->  eyre::Result<Provider<Http>> {
-    let user = User::parse();
-    let _provider = Provider::<Http>::try_from(&user.url)?;
+pub fn init_connection() ->  eyre::Result<Arc<Provider<Http>>> {
+    let user = User::parse().unwrap();
+    let _provider = Provider::<Http>::try_from(&user.endpoint)?;
+    
 
-    Ok(_provider)
+    Ok(Arc::new(_provider))
 }
 
 pub async fn check_on_config(
     config: &Config, 
     user: &str, 
     provider: &Provider<Http>
-) -> Result<(), Box<dyn Error>> {
+) -> Result<f64, Box<dyn Error>> {
     timestamp_print!(Color::White, "Checking the mint requirements!");
     check_timestamp_requirement(config).unwrap();
-    check_balance_requirement(config, provider, user).await?;
+    let eth_balance_before = check_balance_requirement(config, provider, user).await?;
     check_if_contract(config.contract_address.parse().unwrap(), provider).await?;
     check_abi_method(&config.mint_method)?;
     timestamp_print!(Color::Green, "All checks passed!");
-    Ok(())
+    Ok(eth_balance_before)
 }
 
 fn check_timestamp_requirement(config: &Config) -> Result<(), Box<dyn Error>> {
@@ -137,16 +148,25 @@ async fn check_balance_requirement(
     config: &Config, 
     provider: &Provider<Http>, 
     user: &str
-) -> Result<(), Box<dyn std::error::Error>> {
-    timestamp_print!(Color::White, "Checking user's balance!");
+) -> Result<f64, Box<dyn std::error::Error>> {
+    timestamp_print!(Color::Blue, "Checking user's balance!");
+    timestamp_print!(
+        Color::Blue, 
+        format!(
+            "Balance required is : {} ETH", 
+            convert_wei_to_eth(config.price * config.amount)
+        )
+    );
     let account: Address = user.parse().unwrap();
     let balance = provider.get_balance(account, None).await?;
     let balance = balance.as_u64();
+    let eth_balance = balance as f64 / 1_000_000_000_000_000_000.0;
     if balance < config.price * config.amount {
         panic!("Not enough balance!");
     }
-    timestamp_print!(Color::Green, "Balance check passed!");
-    Ok(())
+
+    timestamp_print!(Color::Green, format!("Balance check passed! Balance before: {} ETH", eth_balance));
+    Ok(eth_balance)
 }
 
 pub fn get_unix_time() -> u64 {
@@ -159,5 +179,8 @@ pub async fn mint(config: &Config, provider: &Provider<Http>) -> Result<(), Box<
     Ok(())
 }
 
+fn convert_wei_to_eth(wei: u64) -> f64 {
+    wei as f64 / 1_000_000_000_000_000_000.0
+}
 
 
