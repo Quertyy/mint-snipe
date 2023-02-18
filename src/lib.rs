@@ -147,7 +147,7 @@ fn check_abi_method(method_name: &str) -> Result<(), Box<dyn Error>> {
 async fn check_balance_requirement(
     config: &Config, 
     provider: &Provider<Http>, 
-    user: &str
+    address: &str
 ) -> Result<f64, Box<dyn std::error::Error>> {
     timestamp_print!(Color::Blue, "Checking user's balance!");
     timestamp_print!(
@@ -157,7 +157,7 @@ async fn check_balance_requirement(
             convert_wei_to_eth(config.price * config.amount)
         )
     );
-    let account: Address = user.parse().unwrap();
+    let account: Address = address.parse().unwrap();
     let balance = provider.get_balance(account, None).await?;
     let balance = balance.as_u64();
     let eth_balance = balance as f64 / 1_000_000_000_000_000_000.0;
@@ -179,7 +179,7 @@ pub async fn mint(config: &Config, provider: &Provider<Http>) -> Result<(), Box<
     Ok(())
 }
 
-fn convert_wei_to_eth(wei: u64) -> f64 {
+pub fn convert_wei_to_eth(wei: u64) -> f64 {
     wei as f64 / 1_000_000_000_000_000_000.0
 }
 
