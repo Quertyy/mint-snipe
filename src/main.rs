@@ -33,7 +33,7 @@ fn trigger_timestamp(timestamp: u64) {
     loop {
         let current_time = get_unix_time();
         if current_time < timestamp {
-            thread::sleep(Duration::from_secs(1));
+            thread::sleep(Duration::from_millis(10));
         } else {
             break;
         }
