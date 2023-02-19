@@ -8,15 +8,12 @@ use std::env;
 use std::error::Error;
 use std::result::Result;
 
-use chrono::{Local, format};
 use colored::*;
 use colored::Colorize;
-use std::fmt::{Display, format};
-
 
 use ethabi::Contract;
 use ethers::prelude::*;
-use ethers_signers::{LocalWallet};
+use ethers_signers::LocalWallet;
 
 use std::sync::Arc;
 
@@ -171,12 +168,6 @@ async fn check_balance_requirement(
 
 pub fn get_unix_time() -> u64 {
     SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs()
-}
-
-pub async fn mint(config: &Config, provider: &Provider<Http>) -> Result<(), Box<dyn Error>> {
-    
-
-    Ok(())
 }
 
 pub fn convert_wei_to_eth(wei: u64) -> f64 {

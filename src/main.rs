@@ -70,6 +70,7 @@ async fn sniping(user: User, config: &Config, provider: &Provider<Http>, balance
         timestamp_print!(Color::Green, format!("Minted {} NFTs!", balance));
     }
     timestamp_print!(Color::Blue, "Checking your ETH balance...");
+    // TODO, fix la partie ETH balance qui renvoie une erreur
     let u64_balance = client.get_balance(user.address, None).await?.as_u64();
     let balance_after = convert_wei_to_eth(u64_balance);
 
