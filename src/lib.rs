@@ -33,21 +33,21 @@ macro_rules! timestamp_print {
 #[command(name = "Snipe this Mint!")]
 #[command(author = "Querty for The Diggers DAO")]
 #[command(version = "0.1.0")]
-#[command(about = "Does awesome things", long_about = None)]
+#[command(about = "Let's compete with other bots", long_about = None)]
 pub struct Config {
-    // The contract mint address
+    /// The contract mint address
     #[arg(short, long)]
     pub contract_address: String,
-    // The contract mint method
+    /// The contract mint method
     #[arg(short, long)]
     pub mint_method: String,
-    // The mint price
+    /// The mint price in wei
     #[arg(short, long)]
     pub price: u64,
-    // Number of NFT you want to mint
+    /// Number of NFT you want to mint
     #[arg(short, long)]
     pub amount: u64,
-    // The timestamp of the beginning of the mint
+    /// The timestamp of the beginning of the mint
     #[arg(short, long)]
     pub timestamp: u64,
 }
@@ -113,8 +113,6 @@ fn check_timestamp_requirement(config: &Config) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-abigen!(Test, "src/abi/test.json", event_derives(serde::Deserialize, serde::Serialize));
-
 async fn check_if_contract(contract: Address, provider: &Provider<Http>) -> Result<(), Box<dyn Error>>{
     timestamp_print!(Color::White, "Checking if the contract address is a contract!");
     let code = provider.get_code(contract, None).await?;
@@ -128,7 +126,7 @@ async fn check_if_contract(contract: Address, provider: &Provider<Http>) -> Resu
 
 fn check_abi_method(method_name: &str) -> Result<(), Box<dyn Error>> {
     timestamp_print!(Color::White, "Checking the ABI method!");
-    let mut file = File::open("src/abi/test.json")?;
+    let mut file = File::open("src/abi/abi.json")?;
     let mut abi = String::new();
     file.read_to_string(&mut abi)?;
 
@@ -154,10 +152,8 @@ async fn check_balance_requirement(
             convert_wei_to_eth(config.price * config.amount)
         )
     );
-    let account: Address = address.parse().unwrap();
-    let balance = provider.get_balance(account, None).await?;
-    let balance = balance.as_u64();
-    let eth_balance = balance as f64 / 1_000_000_000_000_000_000.0;
+    let balance = get_wei_balance(address, provider).await?;
+    let eth_balance = convert_wei_to_eth(balance);
     if balance < config.price * config.amount {
         panic!("Not enough balance!");
     }
@@ -168,6 +164,13 @@ async fn check_balance_requirement(
 
 pub fn get_unix_time() -> u64 {
     SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs()
+}
+
+pub async fn get_wei_balance(address: &str, provider: &Provider<Http>) -> Result<u64, Box<dyn Error>> {
+    let account: Address = address.parse().unwrap();
+    let balance = provider.get_balance(account, None).await?;
+    let balance = balance.as_u64();
+    Ok(balance)
 }
 
 pub fn convert_wei_to_eth(wei: u64) -> f64 {
