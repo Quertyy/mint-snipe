@@ -96,15 +96,14 @@ async fn sniping(
 
 fn check_receipt_info(receipt: &TransactionReceipt) {
     timestamp_print!(Color::Green, format!("Transaction hash: {:#066x}", receipt.transaction_hash));
+    let gas_used = receipt.gas_used.unwrap().as_u64();
+    let gas_price = receipt.effective_gas_price.unwrap().as_u64();
+    let gas_cost = gas_used * gas_price;
     timestamp_print!(
         Color::Green, 
         format!(
             "Transaction fees used: {} ETH", 
-            convert_wei_to_eth(
-                receipt
-                    .gas_used
-                    .unwrap()
-                    .as_u64())
+            convert_wei_to_eth(gas_cost)
         )
     );
 }
