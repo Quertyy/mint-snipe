@@ -1,0 +1,13 @@
+clone:
+  git:
+    image: plugins/git
+    environment:
+      - PLUGIN_SKIP_VERIFY=1
+
+pipeline:
+  compliance:
+    image: rust
+    commands:
+      - cargo check
+      - cargo test
+      - cargo build
