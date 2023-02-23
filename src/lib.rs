@@ -1,5 +1,4 @@
 use clap::Parser;
-use ethers_core::k256::ecdsa::SigningKey;
 
 use std::env;
 use std::error::Error;
@@ -12,8 +11,7 @@ use colored::Colorize;
 use colored::*;
 
 use ethabi::Contract;
-use ethers::prelude::*;
-use ethers_signers::LocalWallet;
+use ethers::prelude::{k256::ecdsa::SigningKey, *};
 
 use std::sync::Arc;
 

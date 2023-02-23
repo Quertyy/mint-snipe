@@ -8,11 +8,8 @@ use colored::*;
 use colored::Colorize;
 use mint_sniper::timestamp_print;
 
-use ethers_middleware::SignerMiddleware;
 use std::sync::Arc;
-use ethers::contract::abigen;
 use ethers::prelude::*;
-use ethers::types::Address;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
