@@ -1,5 +1,4 @@
 use clap::Parser;
-use ethers_core::k256::ecdsa::SigningKey;
 
 use std::env;
 use std::error::Error;
@@ -12,8 +11,7 @@ use colored::Colorize;
 use colored::*;
 
 use ethabi::Contract;
-use ethers::prelude::*;
-use ethers_signers::LocalWallet;
+use ethers::prelude::{k256::ecdsa::SigningKey, *};
 
 use std::sync::Arc;
 
@@ -59,48 +57,55 @@ pub struct Config {
 }
 
 pub struct User {
-    pub skey: Wallet<SigningKey>,
-    pub address: String,
-    pub endpoint: String,
+    pub address: H160,
+    pub provider: Arc<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>,
 }
 
 impl User {
-    pub fn parse() -> Result<User, Box<dyn Error>> {
+    pub async fn new() -> Self {
         dotenv::dotenv().ok();
         let pkey = env::var("PRIVATE_KEY").expect("PRIVATE_KEY must be set");
-        let provider_endpoint: &str = &env::var("PROVIDER_URL")
-            .expect("PROVIDER_URL must be set")
-            .to_string();
+        let skey = pkey.parse::<LocalWallet>().unwrap();
+        let user_address = skey.address();
 
-        let skey = pkey.parse::<LocalWallet>()?;
-        //let address = secret_key_to_address(&skey).to_string();
-        //let signer = SignerMiddleware::new(provider, skey);
-        let address = env::var("ADDRESS").expect("ADDRESS must be set");
+        let network = env::var("PROVIDER_URL").expect("PROVIDER_URL must be set");
+        let provider = Provider::<Http>::try_from(network).unwrap();
+        let middleware = Arc::new(setup_signer(provider.clone()).await);
 
-        Ok(User {
-            skey,
-            address: address.to_string(),
-            endpoint: provider_endpoint.to_string(),
-        })
+        Self {
+            address: user_address,
+            provider: middleware,
+        }        
     }
 }
 
-pub fn init_connection() -> eyre::Result<Arc<Provider<Http>>> {
-    let user = User::parse().unwrap();
-    let _provider = Provider::<Http>::try_from(&user.endpoint)?;
+pub async fn setup_signer(
+    provider: Provider<Http>,
+) -> SignerMiddleware<Provider<Http>, Wallet<SigningKey>> {
+    let chain_id = provider
+        .get_chainid()
+        .await
+        .expect("Failed to get chain id.");
 
-    Ok(Arc::new(_provider))
+    let priv_key = std::env::var("PRIVATE_KEY").expect("missing PRIVATE_KEY");
+
+    let wallet = priv_key
+        .parse::<LocalWallet>()
+        .expect("Failed to parse wallet")
+        .with_chain_id(chain_id.as_u64());
+
+    SignerMiddleware::new(provider, wallet)
 }
 
 pub async fn check_on_config(
     config: &Config,
-    user: &str,
-    provider: &Provider<Http>,
+    address: Address,
+    provider: Arc<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>,
 ) -> Result<f64, Box<dyn Error>> {
     timestamp_print!(Color::White, "Checking the mint requirements!");
     check_timestamp_requirement(config).unwrap();
-    let eth_balance_before = check_balance_requirement(config, provider, user).await?;
-    check_if_contract(config.contract_address.parse().unwrap(), provider).await?;
+    let eth_balance_before = check_balance_requirement(config, provider.clone(), address).await?;
+    check_if_contract(config.contract_address.parse().unwrap(), provider.clone()).await?;
     check_abi_method(&config.mint_method)?;
     timestamp_print!(Color::Green, "All checks passed!");
     Ok(eth_balance_before)
@@ -120,7 +125,7 @@ fn check_timestamp_requirement(config: &Config) -> Result<(), Box<dyn Error>> {
 
 async fn check_if_contract(
     contract: Address,
-    provider: &Provider<Http>,
+    provider: Arc<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>,
 ) -> Result<(), Box<dyn Error>> {
     timestamp_print!(
         Color::White,
@@ -152,8 +157,8 @@ fn check_abi_method(method_name: &str) -> Result<(), Box<dyn Error>> {
 
 async fn check_balance_requirement(
     config: &Config,
-    provider: &Provider<Http>,
-    address: &str,
+    provider: Arc<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>,
+    address: Address,
 ) -> Result<f64, Box<dyn std::error::Error>> {
     timestamp_print!(Color::Blue, "Checking user's balance!");
     timestamp_print!(
@@ -184,11 +189,10 @@ pub fn get_unix_time() -> u64 {
 }
 
 pub async fn get_wei_balance(
-    address: &str,
-    provider: &Provider<Http>,
+    address: Address,
+    provider: Arc<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>,
 ) -> Result<u64, Box<dyn Error>> {
-    let account: Address = address.parse().unwrap();
-    let balance = provider.get_balance(account, None).await?;
+    let balance = provider.get_balance(address, None).await?;
     let balance = balance.as_u64();
     Ok(balance)
 }

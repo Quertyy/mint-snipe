@@ -8,21 +8,17 @@ use colored::*;
 use colored::Colorize;
 use mint_sniper::timestamp_print;
 
-use ethers_middleware::SignerMiddleware;
 use std::sync::Arc;
-use ethers::contract::abigen;
-use ethers::prelude::*;
-use ethers::types::Address;
+use ethers::prelude::{k256::ecdsa::SigningKey, *};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let config = Config::parse();
-    let user = User::parse()?;
 
-    let provider = init_connection()?;
-    let eth_balance_before = check_on_config(&config, &user.address, &provider).await?;
+    let user = User::new().await;
+    let eth_balance_before = check_on_config(&config, user.address, user.provider.clone()).await?;
     trigger_timestamp(config.timestamp);
-    sniping(user, &config, &provider, eth_balance_before).await?;
+    sniping(user.address, &config, user.provider.clone(), eth_balance_before).await?;
     timestamp_print!(Color::White, "Exiting");
 
     Ok(())
@@ -51,20 +47,14 @@ abigen!(
 );
 
 async fn sniping(
-    user: User, 
+    address: Address, 
     config: &Config, 
-    provider: &Provider<Http>, 
+    provider: Arc<SignerMiddleware<Provider<Http>, Wallet<SigningKey>>>, 
     balance_before: f64
 ) -> Result<(), Box<dyn Error>> {
     
-    let client = SignerMiddleware::new_with_provider_chain(
-        provider.clone(), 
-        user.skey)
-        .await.unwrap();
-    let client = Arc::new(client);
-
-    let address: Address = config.contract_address.parse().unwrap();
-    let contract = ERC721::new(address, client.clone());
+    let contract_address: Address = config.contract_address.parse().unwrap();
+    let contract = ERC721::new(contract_address, provider.clone());
 
     let amount: U256 = U256::from(config.amount);
     let wei_amount = config.price * config.amount; 
@@ -87,7 +77,7 @@ async fn sniping(
     }
     
     timestamp_print!(Color::Blue, "Checking your ETH balance...");
-    let u64_balance = get_wei_balance(&user.address, &provider).await?;
+    let u64_balance = get_wei_balance(address, provider.clone()).await?;
     let balance_after = convert_wei_to_eth(u64_balance);
     timestamp_print!(Color::Green, format!("ETH balance: {} -> {}", balance_before, balance_after));
     

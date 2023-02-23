@@ -19,7 +19,6 @@ cd mint-sniper && cp .env.example .env && cp src/abi/abi.example.json src/abi/ab
 Replace the values in the `.env` file with your own.
 - `PROVIDER_URL` is your provider URL. You can use [Infura](https://infura.io/) or [Alchemy](https://www.alchemy.com/)
 - `PRIVATE_KEY` is your wallet's private key
-- `ADDRESS` is your wallet's address
 
 Copy the contract's abi in the file `src/abi.json`.
 
