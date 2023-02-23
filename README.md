@@ -1,4 +1,4 @@
-[![status-badge](https://ci.enzofoucaud.fr/api/badges/the-diggers-dao/mint-snipe/status.svg?branch=<branch>)](https://ci.enzofoucaud.fr/the-diggers-dao/mint-snipe)
+[![status-badge](https://ci.enzofoucaud.fr/api/badges/the-diggers-dao/mint-snipe/status.svg)](https://ci.enzofoucaud.fr/the-diggers-dao/mint-snipe)
 
 ## Mint sniper
 _Having issues? Contact Querty#0001 on Discord_
