@@ -6,12 +6,18 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-chrono = "0.4.23"
-clap = { version = "4.1.4", features = ["derive", "cargo"] }
-colored = "2.0.0"
+# Interact with EVM compatible blockchains
+ethers = { git = "https://github.com/gakonst/ethers-rs", features = ["ws", "rustls", "abigen"] }
+
+# Loading .env variables
 dotenv = "0.15.0"
-ethabi = "15.0.0"
-ethers = { version = "1.0.2", features = ["abigen", "rustls"] }
-eyre = "0.6.8"
-hex = "0.4.3"
-tokio = "1.24.2"
+
+# Running asynchronous threads
+tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
+
+# For quick and easy discord alerts
+reqwest = "0.11.0"
+clap = { version = "4.1.6", features = ["derive", "cargo"] }
+ethabi = "18.0.0"
+colored = "2.0.0"
+chrono = "0.4.23"
