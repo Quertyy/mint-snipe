@@ -1,8 +1,7 @@
-[![status-badge](https://ci.enzofoucaud.fr/api/badges/the-diggers-dao/mint-snipe/status.svg)](https://ci.enzofoucaud.fr/the-diggers-dao/mint-snipe)
-
 ## Mint sniper
 _Having issues? Contact Querty#0001 on Discord_
 
+This tool was built on top of the [mev rust template](https://github.com/degatchi/mev-template-rs) of Degatchi.
 ### Installation
 
 ##### Requirements
