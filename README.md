@@ -1,7 +1,7 @@
 ## Mint sniper
 _Having issues? Contact Querty#0001 on Discord_
 
-This tool was built on top of the [mev rust template](https://github.com/degatchi/mev-template-rs) of Degatchi.
+This tool was built on top of the [mev rust template](https://github.com/degatchi/mev-template-rs) designed by Degatchi.
 ### Installation
 
 ##### Requirements
